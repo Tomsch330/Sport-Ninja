@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sport Ninja</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      width: 280px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #111;
+      color: #eee;
+      padding: 20px;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    header .logo { font-size: 2rem; }
+
+    header h1 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    header p {
+      font-size: 0.72rem;
+      color: #777;
+      margin-top: 2px;
+    }
+
+    /* Toggle Switch */
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid #222;
+    }
+
+    .toggle-label {
+      font-size: 0.9rem;
+      color: #ccc;
+    }
+
+    .toggle-switch {
+      position: relative;
+      width: 44px;
+      height: 24px;
+    }
+
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+
+    .toggle-slider {
+      position: absolute;
+      inset: 0;
+      background: #333;
+      border-radius: 24px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .toggle-slider::before {
+      content: "";
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      left: 3px;
+      top: 3px;
+      background: #fff;
+      border-radius: 50%;
+      transition: transform 0.2s;
+    }
+
+    input:checked + .toggle-slider { background: #2e7d32; }
+    input:checked + .toggle-slider::before { transform: translateX(20px); }
+
+    /* Settings */
+    .setting-row {
+      padding: 14px 0;
+    }
+
+    .setting-row label {
+      display: block;
+      font-size: 0.82rem;
+      color: #888;
+      margin-bottom: 8px;
+    }
+
+    .setting-row input[type="range"] {
+      width: 100%;
+      accent-color: #2e7d32;
+    }
+
+    .range-value {
+      font-size: 0.85rem;
+      color: #ccc;
+      text-align: right;
+      margin-top: 4px;
+    }
+
+    .range-value.unlimited {
+      color: #2e7d32;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <span class="logo">🥷</span>
+    <div>
+      <h1>Sport Ninja</h1>
+      <p>Spoiler-Schutz für YouTube</p>
+    </div>
+  </header>
+
+  <div class="toggle-row">
+    <span class="toggle-label">Schutz aktiv</span>
+    <label class="toggle-switch">
+      <input type="checkbox" id="toggleEnabled" checked />
+      <span class="toggle-slider"></span>
+    </label>
+  </div>
+
+  <div class="setting-row">
+    <label for="maxAgeDays">Videos schützen der letzten <span id="daysLabel">14</span> Tage</label>
+    <input type="range" id="maxAgeDays" min="1" max="61" value="14" />
+    <div class="range-value" id="rangeValue">14 Tage</div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

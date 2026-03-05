@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "Sport Ninja",
+  "version": "0.4.2",
+  "description": "Schützt dich vor Spoilern auf YouTube – Thumbnails, Titel, Ergebnisse.",
+  "permissions": ["storage"],
+  "host_permissions": ["https://www.youtube.com/*"],
+  "content_scripts": [
+    {
+      "matches": ["https://www.youtube.com/*"],
+      "css": ["content/ninja.css"],
+      "run_at": "document_start"
+    },
+    {
+      "matches": ["https://www.youtube.com/*"],
+      "js": ["content/spoiler-rules.js", "content/ninja.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "48": "assets/icon-48.png",
+      "128": "assets/icon-128.png"
+    }
+  },
+  "icons": {
+    "48": "assets/icon-48.png",
+    "128": "assets/icon-128.png"
+  }
+}

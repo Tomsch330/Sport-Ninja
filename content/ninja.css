@@ -1,0 +1,134 @@
+/* ninja.css – Visueller Schutz für Sport Ninja */
+
+/* ─── PRE-BLUR: greift sofort bei document_start ─────────── */
+/* Verhindert Flash beim Laden und beim Hover-Preview         */
+
+ytd-thumbnail img,
+ytd-thumbnail yt-image img,
+yt-thumbnail-view-model img,
+ytd-moving-thumbnail-renderer,
+ytd-moving-thumbnail-renderer video {
+  filter: blur(12px) !important;
+  transition: filter 0.2s ease;
+}
+
+/* Enthüllte Thumbnails: überschreibt den Pre-Blur */
+ytd-thumbnail.ninja-revealed img,
+ytd-thumbnail.ninja-revealed yt-image img,
+ytd-thumbnail.ninja-revealed ytd-moving-thumbnail-renderer,
+ytd-thumbnail.ninja-revealed ytd-moving-thumbnail-renderer video,
+yt-thumbnail-view-model.ninja-revealed img {
+  filter: none !important;
+}
+
+/* ─── Ninja Overlay ──────────────────────────────────────── */
+
+.ninja-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  z-index: 10;
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+.ninja-overlay:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.ninja-icon {
+  font-size: 2.4rem;
+  user-select: none;
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 50%;
+  width: 72px;
+  height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.55);
+  transition: transform 0.2s ease, background 0.15s ease;
+  line-height: 1;
+}
+
+.ninja-overlay:hover .ninja-icon {
+  transform: scale(1.1);
+  background: rgba(255, 255, 255, 1);
+}
+
+/* ─── Titel ──────────────────────────────────────────────── */
+
+/* Original-Titel unscharf machen */
+.ninja-title-blurred {
+  filter: blur(5px) !important;
+  user-select: none !important;
+}
+
+/* Lesbarer Match-Hinweis unter dem geschwärzten Titel */
+.ninja-title-safe {
+  font-size: 0.82em;
+  color: #aaa;
+  cursor: pointer;
+  margin-top: 3px;
+  display: block;
+}
+
+.ninja-title-safe:hover {
+  color: #ddd;
+}
+
+/* ─── Videobeschreibungen in Karten blurren ──────────────── */
+
+.ninja-desc-blurred {
+  filter: blur(5px) !important;
+  user-select: none !important;
+  cursor: pointer;
+}
+
+/* ─── Versteckte Elemente ────────────────────────────────── */
+
+.ninja-hidden {
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+/* ─── Eingeklappte Bereiche (Kommentare, Beschreibung) ───── */
+
+.ninja-collapsed {
+  display: none !important;
+}
+
+/* ─── Banner über Kommentaren / Beschreibung ─────────────── */
+
+.ninja-comments-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 8px;
+  color: #aaa;
+  font-size: 14px;
+  margin: 8px 0;
+}
+
+.ninja-reveal-btn {
+  background: none;
+  border: 1px solid #555;
+  border-radius: 4px;
+  color: #ccc;
+  padding: 3px 10px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.ninja-reveal-btn:hover {
+  border-color: #fff;
+  color: #fff;
+}
