@@ -55,7 +55,8 @@ const Ninja = (() => {
     const ytdThumb = thumb.closest("ytd-thumbnail, yt-thumbnail-view-model") || thumb;
 
     thumb.dataset.ninjaProtected = "true";
-    thumb.style.position = "relative";
+    ytdThumb.style.position = "relative";
+    ytdThumb.classList.remove("ninja-revealed");
 
     // Ninja-Overlay erstellen
     const overlay = document.createElement("div");
@@ -84,15 +85,9 @@ const Ninja = (() => {
     titleEl.dataset.ninjaProtected = "true";
     titleEl.classList.add("ninja-title-blurred");
 
-    // Matchup aus Titel versuchen – Fallback: Beschreibungstext der Karte
-    const descEl = cardEl.querySelector("[id='description-text']");
-    const descText = descEl ? descEl.textContent.trim() : "";
-    const matchup = SpoilerRules.extractMatchup(originalTitle)
-                 || SpoilerRules.extractMatchup(descText);
-
     const safe = document.createElement("div");
     safe.className = "ninja-title-safe";
-    safe.textContent = matchup || "🥷 Match";
+    safe.textContent = "Show title";
     safe.title = "Klicken zum Enthüllen";
     titleEl.after(safe);
 
@@ -168,22 +163,16 @@ const Ninja = (() => {
   function protectCard(cardEl) {
     if (!settings.enabled) return;
     if (cardEl.dataset.ninjaProcessed) return;
-    cardEl.dataset.ninjaProcessed = "true";
 
     if (isRecentVideo(cardEl)) {
       // Volles Schutzpaket für Videos im Zeitfenster
       protectThumbnail(cardEl);
       protectTitle(cardEl);
       protectDuration(cardEl);
-
-      const desc = cardEl.querySelector("[id='description-text']");
-      if (desc && !desc.dataset.ninjaProtected) {
-        desc.dataset.ninjaProtected = "true";
-        desc.classList.add("ninja-desc-blurred");
-        desc.addEventListener("click", (e) => {
-          e.stopPropagation();
-          desc.classList.remove("ninja-desc-blurred");
-        }, { once: true });
+      // Erst als verarbeitet markieren wenn Thumbnail gefunden wurde,
+      // sonst beim nächsten Observer-Aufruf erneut versuchen
+      if (cardEl.querySelector(SEL.thumbnail)) {
+        cardEl.dataset.ninjaProcessed = "true";
       }
     } else {
       // Altes Video: CSS-Pre-Blur explizit aufheben
@@ -210,10 +199,28 @@ const Ninja = (() => {
     processWatchPage();
   }
 
+  // --- Beschreibungen schützen (separater Pass, da sie später geladen werden) ---
+
+  function protectDescriptions() {
+    if (!settings.enabled) return;
+    document.querySelectorAll(".metadata-snippet-container, yt-formatted-string.metadata-snippet-text, #description-text").forEach(el => {
+      if (el.dataset.ninjaProtected) return;
+      const card = el.closest(SEL.videoCard);
+      if (card && !isRecentVideo(card)) return;
+      el.dataset.ninjaProtected = "true";
+      el.classList.add("ninja-desc-blurred");
+      el.addEventListener("click", (e) => {
+        e.stopPropagation();
+        el.classList.remove("ninja-desc-blurred");
+      }, { once: true });
+    });
+  }
+
   // --- Alle sichtbaren Karten verarbeiten ---
 
   function processAllCards() {
     document.querySelectorAll(SEL.videoCard).forEach(protectCard);
+    protectDescriptions();
   }
 
   // --- Watchpage-spezifische Elemente ---

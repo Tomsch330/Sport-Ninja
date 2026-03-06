@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Sport Ninja",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "description": "Schützt dich vor Spoilern auf YouTube – Thumbnails, Titel, Ergebnisse.",
   "permissions": ["storage"],
   "host_permissions": ["https://www.youtube.com/*"],
