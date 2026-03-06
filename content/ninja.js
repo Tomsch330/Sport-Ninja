@@ -10,10 +10,10 @@ const Ninja = (() => {
   };
   // --- Selektoren für YouTube-Elemente ---
   const SEL = {
-    videoCard:       "ytd-rich-item-renderer, ytd-compact-video-renderer, ytd-video-renderer, yt-lockup-view-model",
-    thumbnail:       "#thumbnail, a#thumbnail",
+    videoCard:       "ytd-rich-item-renderer, ytd-compact-video-renderer, ytd-video-renderer, yt-lockup-view-model, ytd-grid-video-renderer, div.ytGridShelfViewModelGridShelfItem",
+    thumbnail:       "#thumbnail, a#thumbnail, a.shortsLockupViewModelHostEndpoint, a.yt-lockup-view-model__content-image",
     thumbnailImg:    "#img, img.yt-core-image",
-    title:           "#video-title, #title-wrapper yt-formatted-string",
+    title:           "#video-title, #title-wrapper yt-formatted-string, h3.shortsLockupViewModelHostMetadataTitle, h3.yt-lockup-metadata-view-model__heading-reset",
     duration:        "span.ytd-thumbnail-overlay-time-status-renderer, ytd-thumbnail-overlay-time-status-renderer",
     progressBar:     ".ytp-play-progress, .ytp-load-progress",
     progressBarWrap: ".ytp-progress-bar-container",
@@ -25,23 +25,37 @@ const Ninja = (() => {
   // --- Hilfsfunktionen ---
 
   function isRecentVideo(videoEl) {
-    if (settings.maxAgeDays === -1) return true; // Kein Zeitlimit: immer schützen
-    // Versucht das Alter über den metadata-line-Text zu ermitteln
-    const meta = videoEl.querySelector("ytd-video-meta-block, #metadata-line");
-    if (!meta) return true; // Im Zweifel schützen
-    const text = meta.textContent.toLowerCase();
-    // YouTube zeigt: "vor 2 Stunden", "vor 3 Tagen", "vor 1 Woche" etc.
+    if (settings.maxAgeDays === -1) return true;
+    // Try metadata element first, fall back to thumbnail aria-label
+    // (metadata may be in shadow DOM and inaccessible via querySelector)
+    // Metadata may live inside a nested renderer – search there first
+    const container = videoEl.querySelector("ytd-video-renderer, ytd-compact-video-renderer") || videoEl;
+    const meta = container.querySelector("#metadata-line, span.inline-metadata-item");
+    const ariaLabel = videoEl.querySelector(SEL.thumbnail)?.getAttribute("aria-label") || "";
+    const text = (meta?.textContent || ariaLabel).toLowerCase().trim();
+    if (text.length < 3) return true; // not yet loaded, protect by default
+
     if (text.includes("stunde") || text.includes("minute") || text.includes("sekunde")) return true;
     if (text.includes("hour") || text.includes("minute") || text.includes("second")) return true;
+
     const dayMatch = text.match(/vor\s+(\d+)\s+tag/);
-    if (dayMatch && parseInt(dayMatch[1]) <= settings.maxAgeDays) return true;
+    if (dayMatch) return parseInt(dayMatch[1]) <= settings.maxAgeDays;
     const daysMatch = text.match(/(\d+)\s+day/);
-    if (daysMatch && parseInt(daysMatch[1]) <= settings.maxAgeDays) return true;
+    if (daysMatch) return parseInt(daysMatch[1]) <= settings.maxAgeDays;
+
     const weekMatch = text.match(/vor\s+(\d+)\s+woche/);
-    if (weekMatch && parseInt(weekMatch[1]) * 7 <= settings.maxAgeDays) return true;
+    if (weekMatch) return parseInt(weekMatch[1]) * 7 <= settings.maxAgeDays;
     const weeksMatch = text.match(/(\d+)\s+week/);
-    if (weeksMatch && parseInt(weeksMatch[1]) * 7 <= settings.maxAgeDays) return true;
-    return false;
+    if (weeksMatch) return parseInt(weeksMatch[1]) * 7 <= settings.maxAgeDays;
+
+    const monthMatch = text.match(/vor\s+(\d+)\s+monat/);
+    if (monthMatch) return parseInt(monthMatch[1]) * 30 <= settings.maxAgeDays;
+    const monthsMatch = text.match(/(\d+)\s+month/);
+    if (monthsMatch) return parseInt(monthsMatch[1]) * 30 <= settings.maxAgeDays;
+
+    if (text.includes("jahr") || text.includes("year")) return false;
+
+    return true; // unknown format – protect by default
   }
 
   // --- Thumbnail schützen ---
@@ -50,9 +64,9 @@ const Ninja = (() => {
     const thumb = cardEl.querySelector(SEL.thumbnail);
     if (!thumb || thumb.dataset.ninjaProtected) return;
 
-    // Klasse auf ytd-thumbnail setzen, damit auch ytd-moving-thumbnail-renderer
-    // (Hover-Preview) vom Blur und vom Reveal erfasst wird
-    const ytdThumb = thumb.closest("ytd-thumbnail, yt-thumbnail-view-model") || thumb;
+    const ytdThumb = thumb.closest("ytd-thumbnail, yt-thumbnail-view-model")
+                  || thumb.querySelector("yt-thumbnail-view-model")
+                  || thumb;
 
     thumb.dataset.ninjaProtected = "true";
     ytdThumb.style.position = "relative";
@@ -61,8 +75,34 @@ const Ninja = (() => {
     // Ninja-Overlay erstellen
     const overlay = document.createElement("div");
     overlay.className = "ninja-overlay";
-    overlay.innerHTML = `<span class="ninja-icon" title="Spoiler versteckt – klicken zum Enthüllen">🥷</span>`;
-    thumb.appendChild(overlay);
+    overlay.innerHTML = `<span class="ninja-icon" title="Spoiler hidden – click to reveal">🥷</span>`;
+    ytdThumb.appendChild(overlay);
+
+    // Hide overlay and unblur during hover-preview, restore on mouse leave
+    let hoverActive = false;
+    ytdThumb.addEventListener("mouseenter", () => {
+      hoverActive = true;
+      overlay.style.display = "none";
+      if (!ytdThumb.classList.contains("ninja-revealed")) {
+        // Delay unblur so the video preview is already playing before the static thumbnail becomes visible
+        setTimeout(() => {
+          if (!hoverActive) return;
+          ytdThumb.dataset.ninjaHover = "true";
+          ytdThumb.classList.add("ninja-revealed");
+        }, 150);
+      }
+    });
+    ytdThumb.addEventListener("mouseleave", () => {
+      hoverActive = false;
+      setTimeout(() => {
+        if (hoverActive) return; // mouse re-entered during timeout, abort restore
+        overlay.style.display = "";
+        if (ytdThumb.dataset.ninjaHover) {
+          delete ytdThumb.dataset.ninjaHover;
+          ytdThumb.classList.remove("ninja-revealed");
+        }
+      }, 200);
+    });
 
     // Reveal-Logik: Klick enthüllt
     overlay.addEventListener("click", (e) => {
@@ -87,15 +127,35 @@ const Ninja = (() => {
 
     const safe = document.createElement("div");
     safe.className = "ninja-title-safe";
-    safe.textContent = "Show title";
-    safe.title = "Klicken zum Enthüllen";
+    safe.textContent = "🥷 Unblur content";
     titleEl.after(safe);
 
+    let revealed = false;
     safe.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
-      titleEl.classList.remove("ninja-title-blurred");
-      safe.remove();
+      revealed = !revealed;
+
+      // Titel
+      titleEl.classList.toggle("ninja-title-blurred", !revealed);
+
+      // Thumbnail
+      const thumb = cardEl.querySelector(SEL.thumbnail);
+      if (thumb) {
+        const ytdThumb = thumb.closest("ytd-thumbnail, yt-thumbnail-view-model")
+                      || thumb.querySelector("yt-thumbnail-view-model")
+                      || thumb;
+        ytdThumb.classList.toggle("ninja-revealed", revealed);
+        const overlay = cardEl.querySelector(".ninja-overlay");
+        if (overlay) overlay.style.display = revealed ? "none" : "";
+      }
+
+      // Beschreibung
+      cardEl.querySelectorAll(".metadata-snippet-container, yt-formatted-string.metadata-snippet-text, #description-text").forEach(desc => {
+        desc.classList.toggle("ninja-desc-blurred", !revealed);
+      });
+
+      safe.textContent = revealed ? "🥷 Hide content" : "🥷 Unblur content";
     });
   }
 
@@ -128,7 +188,7 @@ const Ninja = (() => {
 
       const banner = document.createElement("div");
       banner.className = "ninja-comments-banner";
-      banner.innerHTML = `🥷 Kommentare sind versteckt – <button class="ninja-reveal-btn">Enthüllen</button>`;
+      banner.innerHTML = `🥷 Comments hidden – <button class="ninja-reveal-btn">Reveal</button>`;
       comments.before(banner);
 
       banner.querySelector(".ninja-reveal-btn").addEventListener("click", () => {
@@ -148,13 +208,43 @@ const Ninja = (() => {
 
       const banner = document.createElement("div");
       banner.className = "ninja-comments-banner";
-      banner.innerHTML = `🥷 Beschreibung ist versteckt – <button class="ninja-reveal-btn">Enthüllen</button>`;
+      banner.innerHTML = `🥷 Description hidden – <button class="ninja-reveal-btn">Reveal</button>`;
       desc.before(banner);
 
       banner.querySelector(".ninja-reveal-btn").addEventListener("click", () => {
         desc.classList.remove("ninja-collapsed");
         banner.remove();
       });
+    }
+  }
+
+  // --- Prüft ob Metadaten (Uploaddatum) im DOM verfügbar sind ---
+
+  function isMetaAvailable(videoEl) {
+    const container = videoEl.querySelector("ytd-video-renderer, ytd-compact-video-renderer") || videoEl;
+    const meta = container.querySelector("#metadata-line, span.inline-metadata-item");
+    if (meta?.textContent.trim().length >= 3) return true;
+    const ariaLabel = videoEl.querySelector(SEL.thumbnail)?.getAttribute("aria-label") || "";
+    return ariaLabel.length >= 3;
+  }
+
+  // --- Provisorischen Schutz eines alten Videos rückgängig machen ---
+
+  function unprotectCard(cardEl) {
+    const titleEl = cardEl.querySelector(SEL.title);
+    if (titleEl) {
+      titleEl.classList.remove("ninja-title-blurred");
+      titleEl.removeAttribute("data-ninja-protected");
+    }
+    cardEl.querySelectorAll(".ninja-title-safe, .ninja-overlay").forEach(el => el.remove());
+    const thumb = cardEl.querySelector(SEL.thumbnail);
+    if (thumb) {
+      thumb.removeAttribute("data-ninja-protected");
+      const ytdThumb = thumb.closest("ytd-thumbnail, yt-thumbnail-view-model")
+                    || thumb.querySelector("yt-thumbnail-view-model")
+                    || thumb;
+      ytdThumb.classList.add("ninja-revealed");
+      ytdThumb.style.position = "";
     }
   }
 
@@ -165,22 +255,19 @@ const Ninja = (() => {
     if (cardEl.dataset.ninjaProcessed) return;
 
     if (isRecentVideo(cardEl)) {
-      // Volles Schutzpaket für Videos im Zeitfenster
       protectThumbnail(cardEl);
       protectTitle(cardEl);
       protectDuration(cardEl);
-      // Erst als verarbeitet markieren wenn Thumbnail gefunden wurde,
-      // sonst beim nächsten Observer-Aufruf erneut versuchen
-      if (cardEl.querySelector(SEL.thumbnail)) {
+      // Only finalize when thumbnail, title text AND metadata are all available,
+      // otherwise retry on next observer call so the time window is evaluated properly
+      const titleReady = cardEl.querySelector(SEL.title)?.textContent.trim();
+      if (cardEl.querySelector(SEL.thumbnail) && titleReady && isMetaAvailable(cardEl)) {
         cardEl.dataset.ninjaProcessed = "true";
       }
     } else {
-      // Altes Video: CSS-Pre-Blur explizit aufheben
-      const thumb = cardEl.querySelector(SEL.thumbnail);
-      if (thumb) {
-        const ytdThumb = thumb.closest("ytd-thumbnail, yt-thumbnail-view-model") || thumb;
-        ytdThumb.classList.add("ninja-revealed");
-      }
+      // Confirmed old video – undo any provisional protection and lift pre-blur
+      unprotectCard(cardEl);
+      cardEl.dataset.ninjaProcessed = "true";
     }
   }
 
@@ -192,7 +279,7 @@ const Ninja = (() => {
       el.classList.remove("ninja-title-blurred", "ninja-desc-blurred", "ninja-hidden");
       el.style.position = "";
     });
-    document.querySelectorAll(".ninja-title-safe, .ninja-overlay").forEach(el => el.remove());
+    document.querySelectorAll(".ninja-title-safe, .ninja-overlay, .ninja-comments-banner").forEach(el => el.remove());
     document.querySelectorAll(".ninja-revealed").forEach(el => el.classList.remove("ninja-revealed"));
     document.querySelectorAll("[data-ninja-processed]").forEach(el => el.removeAttribute("data-ninja-processed"));
     processAllCards();
@@ -233,18 +320,15 @@ const Ninja = (() => {
 
   // --- MutationObserver: fängt dynamisch geladene Inhalte ab ---
 
+  let debounceTimer = null;
   const observer = new MutationObserver((mutations) => {
-    let needsProcessing = false;
-    for (const mutation of mutations) {
-      if (mutation.addedNodes.length > 0) {
-        needsProcessing = true;
-        break;
-      }
-    }
-    if (needsProcessing) {
+    const hasNewNodes = mutations.some(m => m.addedNodes.length > 0);
+    if (!hasNewNodes) return;
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
       processAllCards();
       processWatchPage();
-    }
+    }, 150);
   });
 
   // --- Init ---

@@ -47,11 +47,11 @@ maxAgeDaysInput.addEventListener("input", () => {
 function updateLabel(sliderVal) {
   if (sliderVal >= UNLIMITED_SLIDER) {
     daysLabel.textContent = "∞";
-    rangeValueEl.textContent = "Alle Videos";
+    rangeValueEl.textContent = "All videos";
     rangeValueEl.classList.add("unlimited");
   } else {
     daysLabel.textContent = sliderVal;
-    rangeValueEl.textContent = `${sliderVal} Tage`;
+    rangeValueEl.textContent = `${sliderVal} days`;
     rangeValueEl.classList.remove("unlimited");
   }
 }
